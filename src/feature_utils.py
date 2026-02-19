@@ -29,13 +29,21 @@ def extract_features():
     ccy_data = web.DataReader(ccy_tickers, 'fred', start=START_DATE, end=END_DATE)
     idx_data = web.DataReader(idx_tickers, 'fred', start=START_DATE, end=END_DATE)
 
-    Y = np.log(stk_data.loc[:, ('Adj Close', 'TSLA')]).diff(return_period).shift(-return_period)
-    Y.name = Y.name[-1]+'_Future'
-    
-    X1 = np.log(stk_data.loc[:, ('Adj Close', ('AAPL', 'NVDA'))]).diff(return_period)
-    X1.columns = X1.columns.droplevel()
-    X2 = np.log(ccy_data).diff(return_period)
-    X3 = np.log(idx_data).diff(return_period)
+   # Pick a price column that actually exists
+price_col = "Adj Close" if (isinstance(stk_data.columns, pd.MultiIndex) and
+                            "Adj Close" in stk_data.columns.get_level_values(0)) else "Close"
+
+# Safe price pulls
+tsla_px = stk_data[price_col]["TSLA"]
+feat_px = stk_data[price_col][["AAPL", "NVDA"]]
+
+Y = np.log(tsla_px).diff(return_period).shift(-return_period)
+Y.name = "TSLA_Future"
+
+X1 = np.log(feat_px).diff(return_period)
+
+X2 = np.log(ccy_data).diff(return_period)
+X3 = np.log(idx_data).diff(return_period)
 
     X = pd.concat([X1, X2, X3], axis=1)
     
@@ -66,6 +74,7 @@ def get_bitcoin_historical_prices(days = 60):
     df['Date'] = pd.to_datetime(df['Timestamp'], unit='ms').dt.normalize()
     df = df[['Date', 'Close Price (USD)']].set_index('Date')
     return df
+
 
 
 
