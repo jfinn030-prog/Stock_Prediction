@@ -76,11 +76,24 @@ def get_bitcoin_historical_prices(days = 60):
     }
     response = requests.get(BASE_URL, params=params)
     data = response.json()
-    prices = data['prices'] if isinstance(data, dict) and 'prices' in data else []
+    
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"CoinGecko response is not a dict. type={type(data)} preview={str(data)[:300]}"
+        )
+    
+    if "prices" not in data:
+        raise ValueError(
+            f"CoinGecko response missing 'prices'. keys={list(data.keys())} preview={str(data)[:300]}"
+        )
+
+    prices = data["prices"]
+    
     df = pd.DataFrame(prices, columns=['Timestamp', 'Close Price (USD)'])
     df['Date'] = pd.to_datetime(df['Timestamp'], unit='ms').dt.normalize()
     df = df[['Date', 'Close Price (USD)']].set_index('Date')
     return df
+
 
 
 
