@@ -119,21 +119,22 @@ def call_model_api(input_df):
 
 # Local Explainability
 def display_explanation(input_df, session, aws_bucket):
-    explainer_name = MODEL_INFO["explainer"]
-    explainer = load_shap_explainer(session, aws_bucket, posixpath.join('explainer', explainer_name),os.path.join(tempfile.gettempdir(), explainer_name))
-
     full_pipeline = load_pipeline(session, aws_bucket, 'sklearn-pipeline-deployment')
+
+    explainer = shap.Explainer(full_pipeline[-1])
+
     preprocessing_pipeline = Pipeline(steps=full_pipeline.steps[:-2])
     input_df_transformed = preprocessing_pipeline.transform(input_df)
     shap_values = explainer(input_df_transformed)
+
     feature_names = full_pipeline[1:4].get_feature_names_out()
 
     exp = shap.Explanation(
-        values=shap_values[0, :, 0],       # The matrix of SHAP values
-        base_values=explainer.expected_value[0], # The intercept/base value
-        data=input_df_transformed[0],        # The actual feature values for that user
-        feature_names=feature_names        # Your list of names
-        )
+        values=shap_values[0, :, 0],
+        base_values=explainer.expected_value[0],
+        data=input_df_transformed[0],
+        feature_names=feature_names
+    )
 
     st.subheader("🔍 Decision Transparency (SHAP)")
     fig, ax = plt.subplots(figsize=(10, 4))
@@ -176,6 +177,7 @@ if submitted:
         display_explanation(input_df,session, aws_bucket)
     else:
         st.error(res)
+
 
 
 
