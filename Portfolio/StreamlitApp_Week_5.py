@@ -121,7 +121,12 @@ def call_model_api(input_df):
 def display_explanation(input_df, session, aws_bucket):
     full_pipeline = load_pipeline(session, aws_bucket, 'sklearn-pipeline-deployment')
 
+    try:
     explainer = shap.Explainer(full_pipeline[-1])
+except Exception as e:
+    st.warning("SHAP explanation is unavailable in this environment (model object can't be introspected).")
+    st.caption(str(e))
+    return
 
     preprocessing_pipeline = Pipeline(steps=full_pipeline.steps[:-2])
     input_df_transformed = preprocessing_pipeline.transform(input_df)
@@ -177,6 +182,7 @@ if submitted:
         display_explanation(input_df,session, aws_bucket)
     else:
         st.error(res)
+
 
 
 
