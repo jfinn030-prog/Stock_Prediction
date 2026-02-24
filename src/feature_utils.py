@@ -87,12 +87,13 @@ def get_bitcoin_historical_prices(days = 60):
             f"CoinGecko response missing 'prices'. keys={list(data.keys())} preview={str(data)[:300]}"
         )
 
-    prices = data["prices"]
+    prices = data["Close Price (USD)"]
     
     df = pd.DataFrame(prices, columns=['Timestamp', 'Close Price (USD)'])
     df['Date'] = pd.to_datetime(df['Timestamp'], unit='ms').dt.normalize()
     df = df[['Date', 'Close Price (USD)']].set_index('Date')
     return df
+
 
 
 
