@@ -215,14 +215,15 @@ if submitted:
     
     res, status = call_model_api(input_df)
 
-if status == 200:
-    st.metric("Prediction Result", res)
+    if status == 200:
+        st.metric("Prediction Result", res)
 
-    plot_btc_charts(df_prices)
+        plot_btc_charts(df_prices)
 
-    display_explanation(input_df,session, aws_bucket)
-else:
-    st.error(res)
+        display_explanation(input_df,session, aws_bucket)
+    else:
+        st.error(res)
+
 
 
 
