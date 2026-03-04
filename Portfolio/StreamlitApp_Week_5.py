@@ -169,7 +169,24 @@ def plot_btc_charts(df_prices):
     ax.set_title("Bitcoin Price with Moving Averages")
     ax.legend()
 
-    st.pyplot(fig)
+    st.pyplot(fig)   # ← FIRST PLOT
+
+    # ---------------- RSI PLOT ----------------
+
+    delta = close.diff()
+    gain = delta.clip(lower=0).rolling(14).mean()
+    loss = (-delta.clip(upper=0)).rolling(14).mean()
+    rs = gain / (loss.replace(0, np.nan))
+    rsi_14 = 100 - (100 / (1 + rs))
+
+    fig2, ax2 = plt.subplots(figsize=(10,3))
+    ax2.plot(rsi_14.index, rsi_14.values, label="RSI 14")
+    ax2.axhline(70, linestyle="--")
+    ax2.axhline(30, linestyle="--")
+    ax2.set_title("RSI (14)")
+    ax2.legend()
+
+    st.pyplot(fig2)   # ← SECOND PLOT
 
 # Streamlit UI
 st.set_page_config(page_title="ML Deployment Compiler", layout="wide")
@@ -206,6 +223,7 @@ if status == 200:
     display_explanation(input_df,session, aws_bucket)
 else:
     st.error(res)
+
 
 
 
