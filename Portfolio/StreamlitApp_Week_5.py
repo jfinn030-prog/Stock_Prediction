@@ -149,6 +149,27 @@ def display_explanation(input_df, session, aws_bucket):
     top_feature = pd.Series(exp.values, index=exp.feature_names).abs().idxmax()
     st.info(f"**Business Insight:** The most influential factor in this decision was **{top_feature}**.")
 
+def plot_btc_charts(df_prices):
+
+    close = df_prices.iloc[:,0]
+
+    ma5 = close.rolling(5).mean()
+    ma15 = close.rolling(15).mean()
+    ema5 = close.ewm(span=5, adjust=False).mean()
+    ema15 = close.ewm(span=15, adjust=False).mean()
+
+    fig, ax = plt.subplots(figsize=(10,4))
+
+    ax.plot(close.index, close, label="Close")
+    ax.plot(ma5.index, ma5, label="MA 5")
+    ax.plot(ma15.index, ma15, label="MA 15")
+    ax.plot(ema5.index, ema5, label="EMA 5")
+    ax.plot(ema15.index, ema15, label="EMA 15")
+
+    ax.set_title("Bitcoin Price with Moving Averages")
+    ax.legend()
+
+    st.pyplot(fig)
 
 # Streamlit UI
 st.set_page_config(page_title="ML Deployment Compiler", layout="wide")
@@ -172,16 +193,20 @@ with st.form("pred_form"):
 if submitted:
 
     data_row = [user_inputs[k] for k in MODEL_INFO["keys"]]
-    # Prepare data (Stock predictor uses df_features, Bitcoin uses df_prices)
     base_df = df_prices
     input_df = pd.concat([base_df, pd.DataFrame([data_row], columns=base_df.columns)])
     
     res, status = call_model_api(input_df)
+
     if status == 200:
-        st.metric("Prediction Result", res)
-        display_explanation(input_df,session, aws_bucket)
-    else:
-        st.error(res)
+    st.metric("Prediction Result", res)
+
+    plot_btc_charts(df_prices)
+
+    display_explanation(input_df,session, aws_bucket)
+else:
+    st.error(res)
+
 
 
 
