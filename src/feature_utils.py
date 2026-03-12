@@ -53,22 +53,41 @@ def extract_features_pair():
 
     START_DATE = (datetime.date.today() - datetime.timedelta(days=365)).strftime("%Y-%m-%d")
     END_DATE = datetime.date.today().strftime("%Y-%m-%d")
-    stk_tickers = ['ANET', 'NVDA']
-    
-    stk_data = yf.download(stk_tickers, start=START_DATE, end=END_DATE, auto_adjust=False)
 
-    Y = stk_data.loc[:, ('Adj Close', 'NVDA')]
-    Y.name = 'NVDA'
+    target_ticker = 'NVDA'
+    partner_ticker = 'ANET'
+    stk_tickers = [partner_ticker, target_ticker]
 
-    X = stk_data.loc[:, ('Adj Close', 'ANET')]
-    X.name = 'ANET'
+    stk_data = yf.download(
+        stk_tickers,
+        start=START_DATE,
+        end=END_DATE,
+        auto_adjust=False,
+        progress=False
+    )
 
-    dataset = pd.concat([Y, X], axis=1).dropna()
-    Y = dataset.loc[:, Y.name]
-    X = dataset.loc[:, X.name]
+    # Handle yfinance multi-index columns safely
+    if isinstance(stk_data.columns, pd.MultiIndex):
+        if ('Adj Close', target_ticker) in stk_data.columns:
+            y = stk_data[('Adj Close', target_ticker)]
+            x = stk_data[('Adj Close', partner_ticker)]
+        else:
+            y = stk_data[('Close', target_ticker)]
+            x = stk_data[('Close', partner_ticker)]
+    else:
+        # fallback in case yfinance returns a flat column structure
+        if 'Adj Close' in stk_data.columns:
+            raise ValueError("Expected multi-ticker data but got flat columns.")
+        else:
+            raise ValueError("Unexpected yfinance output format.")
+
+    y.name = target_ticker
+    x.name = partner_ticker
+
+    dataset = pd.concat([x, y], axis=1).dropna()
     dataset.index.name = 'Date'
-    features = dataset.sort_index()
-    features = features.reset_index(drop=True)
+
+    features = dataset.sort_index().reset_index(drop=True)
     return features
 
 def get_bitcoin_historical_prices(days=60):
@@ -100,5 +119,6 @@ def get_bitcoin_historical_prices(days=60):
         idx = pd.date_range(end=pd.Timestamp.today().normalize(), periods=days, freq="D")
         close = np.linspace(60000, 80000, len(idx))
         return pd.DataFrame({"Close Price (USD)": close}, index=idx)
+
 
 
