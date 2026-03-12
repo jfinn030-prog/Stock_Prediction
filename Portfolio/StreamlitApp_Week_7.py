@@ -83,16 +83,10 @@ def load_pipeline(_session, bucket, key):
     # Load the full pipeline
     return joblib.load(f"{joblib_file}")
 
-def load_shap_explainer(_session, bucket, key):
-    s3_client = _session.client('s3')
+def load_shap_explainer():
     local_path = MODEL_INFO["explainer"]
-
-    if not os.path.exists(local_path):
-        s3_client.download_file(Bucket=bucket, Key=key, Filename=local_path)
-
     with open(local_path, "rb") as f:
-        return shap.Explainer.load(f)
-
+        return shap.Explainer.load(f)    
 
 # Prediction Logic
 def call_model_api(input_df):
@@ -113,13 +107,8 @@ def call_model_api(input_df):
 
 # Local Explainability
 def display_explanation(input_df, session, aws_bucket):
-    explainer_name = MODEL_INFO["explainer"]
-    explainer = load_shap_explainer(
-        session,
-        aws_bucket,
-        posixpath.join(MODEL_INFO["endpoint"], explainer_name)
-    )
-
+    explainer = load_shap_explainer()
+    
     # load saved pipeline
     model_path = MODEL_INFO["pipeline"]
     best_pipeline = load(model_path)
@@ -174,6 +163,7 @@ if submitted:
         display_explanation(input_df,session, aws_bucket)
     else:
         st.error(res)
+
 
 
 
