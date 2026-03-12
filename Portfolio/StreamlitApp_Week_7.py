@@ -111,7 +111,7 @@ def call_model_api(input_df):
         return f"Error: {str(e)}", 500
 
 # Local Explainability
-def display_explanation(input_df, session, aws_bucket):
+# def display_explanation(input_df, session, aws_bucket):
     explainer_name = MODEL_INFO["explainer"]
     explainer = load_shap_explainer(session, aws_bucket, posixpath.join('explainer', explainer_name),os.path.join(tempfile.gettempdir(), explainer_name))
     shap_values = explainer(input_df)
@@ -154,6 +154,7 @@ if submitted:
         display_explanation(input_df,session, aws_bucket)
     else:
         st.error(res)
+
 
 
 
