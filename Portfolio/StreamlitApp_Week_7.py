@@ -17,7 +17,6 @@ from sagemaker.deserializers import JSONDeserializer
 from sagemaker.serializers import NumpySerializer
 from sagemaker.deserializers import NumpyDeserializer
 
-from sklearn.pipeline import Pipeline
 import shap
 
 from joblib import load
@@ -84,16 +83,16 @@ def load_pipeline(_session, bucket, key):
     # Load the full pipeline
     return joblib.load(f"{joblib_file}")
 
-def load_shap_explainer(_session, bucket, key, local_path):
+def load_shap_explainer(_session, bucket, key):
     s3_client = _session.client('s3')
-    local_path = local_path
+    local_path = MODEL_INFO["explainer"]
 
-    # Only download if it doesn't exist locally to save time
     if not os.path.exists(local_path):
-        s3_client.download_file(Filename=local_path, Bucket=bucket, Key=key)
-        
+        s3_client.download_file(Bucket=bucket, Key=key, Filename=local_path)
+
     with open(local_path, "rb") as f:
         return shap.Explainer.load(f)
+
 
 # Prediction Logic
 def call_model_api(input_df):
@@ -129,7 +128,7 @@ def display_explanation(input_df, session, aws_bucket):
     preprocessing_pipeline = Pipeline(steps=best_pipeline.steps[:-2])
 
     # transform raw 2-column input into the 3-feature space expected by SHAP
-    input_transformed = preprocessing_pipeline.transform(input_df)
+    input_transformed = preprocessing_pipeline.transform(input_df.tail(1))
 
     # recover transformed feature names
     feature_names = best_pipeline[1:4].get_feature_names_out()
@@ -175,6 +174,7 @@ if submitted:
         display_explanation(input_df,session, aws_bucket)
     else:
         st.error(res)
+
 
 
 
