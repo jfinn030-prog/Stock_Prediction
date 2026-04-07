@@ -9,6 +9,8 @@ import os
 import sys
 import json #
 
+print("src/feature_utils.py latest version loaded")
+
 from src.Custom_Classes import FeatureEngineer
 
 
