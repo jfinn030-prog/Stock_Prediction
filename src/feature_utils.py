@@ -7,12 +7,10 @@ import requests
 #from datetime import datetime, timedelta
 import os
 import sys
+import json #
 
-import os
-import sys
+from src.Custom_Classes import FeatureEngineer
 
-
-# ... continue with your script ...
 
 def extract_features():
 
@@ -50,92 +48,103 @@ def extract_features():
     return features
 
 def extract_features_pair():
+
     START_DATE = (datetime.date.today() - datetime.timedelta(days=365)).strftime("%Y-%m-%d")
     END_DATE = datetime.date.today().strftime("%Y-%m-%d")
+    stk_tickers = ['AAPL', 'MPWR']
+    
+    stk_data = yf.download(stk_tickers, start=START_DATE, end=END_DATE, auto_adjust=False)
 
-    target_ticker = 'NVDA'
-    partner_ticker = 'ANET'
-    stk_tickers = [partner_ticker, target_ticker]
+    Y = stk_data.loc[:, ('Adj Close', 'AAPL')]
+    Y.name = 'AAPL'
 
-    try:
-        stk_data = yf.download(
-            stk_tickers,
-            start=START_DATE,
-            end=END_DATE,
-            auto_adjust=False,
-            progress=False,
-            threads=False
-        )
+    X = stk_data.loc[:, ('Adj Close', 'MPWR')]
+    X.name = 'MPWR'
 
-        if stk_data.empty:
-            raise ValueError("yfinance returned empty data")
+    dataset = pd.concat([Y, X], axis=1).dropna()
+    Y = dataset.loc[:, Y.name]
+    X = dataset.loc[:, X.name]
+    dataset.index.name = 'Date'
+    features = dataset.sort_index()
+    features = features.reset_index(drop=True)
+    return features
 
-        # Pull adjusted close if available, otherwise close
-        if isinstance(stk_data.columns, pd.MultiIndex):
-            if ('Adj Close', target_ticker) in stk_data.columns and ('Adj Close', partner_ticker) in stk_data.columns:
-                y = stk_data[('Adj Close', target_ticker)]
-                x = stk_data[('Adj Close', partner_ticker)]
-            elif ('Close', target_ticker) in stk_data.columns and ('Close', partner_ticker) in stk_data.columns:
-                y = stk_data[('Close', target_ticker)]
-                x = stk_data[('Close', partner_ticker)]
-            else:
-                raise ValueError(f"Unexpected columns: {stk_data.columns}")
-        else:
-            raise ValueError(f"Expected MultiIndex columns, got: {stk_data.columns}")
-
-        y.name = target_ticker
-        x.name = partner_ticker
-
-        dataset = pd.concat([x, y], axis=1).dropna()
-        if dataset.empty:
-            raise ValueError("No overlapping price data after dropna")
-
-        dataset.index.name = 'Date'
-        features = dataset.sort_index().reset_index(drop=True)
-        return features
-
-    except Exception as e:
-        print("extract_features_pair error:", e)
-
-        # Fallback so Streamlit still runs
-        idx = pd.RangeIndex(start=0, stop=252, step=1)
-        fallback = pd.DataFrame({
-            partner_ticker: np.linspace(200, 260, len(idx)),
-            target_ticker: np.linspace(800, 1000, len(idx))
-        }, index=idx)
-
-        return fallback
-
-def get_bitcoin_historical_prices(days=60):
-
+def get_bitcoin_historical_prices(days = 60):
+    
     BASE_URL = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart"
-
+    
     params = {
-        "vs_currency": "usd",
-        "days": days,
-        "interval": "daily"
+        'vs_currency': 'usd',
+        'days': days,
+        'interval': 'daily' # Ensure we get daily granularity
     }
+    response = requests.get(BASE_URL, params=params)
+    data = response.json()
+    prices = data['prices']
+    df = pd.DataFrame(prices, columns=['Timestamp', 'Close Price (USD)'])
+    df['Date'] = pd.to_datetime(df['Timestamp'], unit='ms').dt.normalize()
+    df = df[['Date', 'Close Price (USD)']].set_index('Date')
+    return df
 
-    try:
-        response = requests.get(BASE_URL, params=params, timeout=15)
-        data = response.json()
+def convert_input_pca_regression(request_body, request_content_type):
+    print(f"Receiving data of type: {request_content_type}")
+    
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(current_dir, '..'))
+    file_path = os.path.join(project_root, 'Portfolio/SP500Data.csv')
 
-        prices = data.get("prices") if isinstance(data, dict) else None
-        if not prices:
-            raise ValueError("Missing 'prices' key in API response")
+    dataset = pd.read_csv(file_path,index_col=0)
 
-        df = pd.DataFrame(prices, columns=["Timestamp", "Close Price (USD)"])
-        df["Date"] = pd.to_datetime(df["Timestamp"], unit="ms").dt.normalize()
-        df = df[["Date", "Close Price (USD)"]].set_index("Date")
+    target = 'MSFT'
 
-        return df
+    option = 2
 
-    except Exception:
-        # Fallback if CoinGecko fails (prevents Streamlit crash)
-        idx = pd.date_range(end=pd.Timestamp.today().normalize(), periods=days, freq="D")
-        close = np.linspace(60000, 80000, len(idx))
-        return pd.DataFrame({"Close Price (USD)": close}, index=idx)
+    if option == 2:
 
+        X = FeatureEngineer(windows=[10,15]).transform(dataset[[target]])
+    
+        techIndicator_1 = 'RSI_15'
+        RSI_15 = json.loads(request_body)[techIndicator_1]
+        techIndicator_2 = 'MOM_15'
+        MOM_15 = json.loads(request_body)[techIndicator_2]
 
+        # Calculate the distance
+        distances = np.sqrt(
+            (X[techIndicator_1] - RSI_15)**2 + 
+            (X[techIndicator_2] - MOM_15)**2
+        )
+        
+        closest_index = distances.idxmin()
+        closest_row = X.loc[[closest_index]]
+    
+        closest_row[techIndicator_1] = RSI_15
+        closest_row[techIndicator_2] = MOM_15
+    
+        return closest_row
+    else:
 
+        return_period = 5
 
+        SP500_1 = 'IBM_CR_Cum'
+        IBM_CR_Cum = json.loads(request_body)[SP500_1]
+        SP500_2 = 'NVDA_CR_Cum'
+        NVDA_CR_Cum = json.loads(request_body)[SP500_2]
+
+        X = np.log(dataset.drop([target],axis=1)).diff(return_period)
+        X = np.exp(X).cumsum()
+        X.columns = [name + "_CR_Cum" for name in X.columns]
+        
+        # Calculate the distance
+        distances = np.sqrt(
+            (X[SP500_1] - IBM_CR_Cum)**2 + 
+            (X[SP500_2] - NVDA_CR_Cum)**2
+        )
+        
+        closest_index = distances.idxmin()
+        closest_row = X.loc[[closest_index]]
+    
+        closest_row[SP500_1] = IBM_CR_Cum
+        closest_row[SP500_2] = NVDA_CR_Cum
+    
+        return closest_row
+    
