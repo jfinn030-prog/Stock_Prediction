@@ -81,9 +81,7 @@ def load_shap_explainer(_session, bucket, key, local_path):
     s3_client = _session.client('s3')
     local_path = local_path
 
-    # Only download if it doesn't exist locally to save time
-    if not os.path.exists(local_path):
-        s3_client.download_file(Filename=local_path, Bucket=bucket, Key=key)
+    s3_client.download_file(Filename=local_path, Bucket=bucket, Key=key)
         
     with open(local_path, "rb") as f:
         return shap.Explainer.load(f)
