@@ -77,6 +77,15 @@ def load_pipeline(_session, bucket, key):
     # Load the full pipeline
     return joblib.load(f"{joblib_file}")
 
+def load_pipeline1(_session, bucket):
+    s3_client = _session.client('s3')
+    s3_client.download_file(
+        Filename='regression_pipeline1.joblib',
+        Bucket=bucket,
+        Key='sklearn-pipeline-deployment/regression_pipeline1.joblib'
+    )
+    return joblib.load('regression_pipeline1.joblib')
+
 def load_shap_explainer(_session, bucket, key, local_path):
     s3_client = _session.client('s3')
     local_path = local_path
@@ -113,10 +122,10 @@ def display_explanation(input_df, session, aws_bucket):
 
     best_pipeline = load_pipeline(session, aws_bucket, 'sklearn-pipeline-deployment')
 
-    preprocessing_pipeline = Pipeline(steps=best_pipeline.steps[0:3])
+    pipeline1 = load_pipeline1(session, aws_bucket)
+    preprocessing_pipeline = Pipeline(steps=pipeline1.steps[0:3])
     input_df_transformed = preprocessing_pipeline.transform(input_df)
-    n_cols = input_df_transformed.shape[1]
-    feature_names = [f'KernelPCA_{i+1}' for i in range(n_cols)]
+    feature_names = pipeline1[0:3].get_feature_names_out()
     input_df_transformed = pd.DataFrame(input_df_transformed, columns=feature_names)
     shap_values = explainer(input_df_transformed)
   
