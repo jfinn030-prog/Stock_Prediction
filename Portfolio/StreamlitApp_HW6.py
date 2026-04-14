@@ -63,7 +63,7 @@ MODEL_INFO = {
         "endpoint": aws_endpoint,
         "explainer": 'explainer_sentiment.shap',
         "pipeline": 'finalized_sentiment_model.tar.gz',
-        "keys": ['ADBE','MSFT','JPM','sentiment_textblob'],   #SHOULD MATCH WHAT YOU HAVE IN NOTEBOOK
+        "keys": ['ADBE','AMZN','WMT','PredictedSentiment'],   #SHOULD MATCH WHAT YOU HAVE IN NOTEBOOK
         "inputs": [{"name": k, "type": "number", "min": -1.0, "max": 1.0, "default": 0.0, "step": 0.01} for k in ['ADBE','MSFT','JPM','sentiment_textblob']]
 }
 
