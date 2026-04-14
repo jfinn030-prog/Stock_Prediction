@@ -63,7 +63,7 @@ MODEL_INFO = {
         "endpoint": aws_endpoint,
         "explainer": 'explainer_sentiment.shap',
         "pipeline": 'finalized_sentiment_model.tar.gz',
-        "keys": ['ADBE','MSFT','JPM','sentiment_textblob'],
+        "keys": ['ADBE','MSFT','JPM','sentiment_textblob'],   #SHOULD MATCH WHAT YOU HAVE IN NOTEBOOK
         "inputs": [{"name": k, "type": "number", "min": -1.0, "max": 1.0, "default": 0.0, "step": 0.01} for k in ['ADBE','MSFT','JPM','sentiment_textblob']]
 }
 
@@ -106,12 +106,12 @@ def call_model_api(input_df):
     )
 
     try:
-        # For regression
+        # For regression         (the 3 lines following this are for option 1)
         # raw_pred = predictor.predict(input_df)
         # pred_val = pd.DataFrame(raw_pred).values[-1][0]
         # return round(float(pred_val), 4), 200
-        # For classification
-        raw_pred = predictor.predict(input_df)
+        # For classification     (leave under this as is if doing option 2 or 3)
+        raw_pred = predictor.predict(input_df)               #code will currently run for classification, regression is commented out
         pred_val = pd.DataFrame(raw_pred).values[-1][0]
         mapping = {-1: "SELL", 0: "HOLD", 1: "BUY"}
         return mapping.get(pred_val), 200
@@ -132,11 +132,13 @@ def display_explanation(input_df, session, aws_bucket):
     
     st.subheader("🔍 Decision Transparency (SHAP)")
     fig, ax = plt.subplots(figsize=(10, 4))
-    #shap.plots.waterfall(shap_values[0], max_display=10)
-    shap.plots.waterfall(shap_values[0, :, 0])
+    #shap.plots.waterfall(shap_values[0], max_display=10)         #THIS FOR REGRESSION
+    shap.plots.waterfall(shap_values[0, :, 0])                    #THIS FOR CLASSIFICATION
     st.pyplot(fig)
     # top feature 
+    # Regression
     # top_feature = pd.Series(shap_values[0].values, index=shap_values[0].feature_names).abs().idxmax()
+    # Classification
     top_feature = pd.Series(shap_values[0, :, 0].values, index=shap_values[0, :, 0].feature_names).abs().idxmax()
     st.info(f"**Business Insight:** The most influential factor in this decision was **{top_feature}**.")
 
