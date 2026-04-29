@@ -69,10 +69,11 @@ sm_session = sagemaker.Session(boto_session=session)
 
 MODEL_INFO = {
     "endpoint"  : aws_endpoint,
-    "explainer" : "explainer_sentiment.shap",
-    "pipeline"  : "finalized_fraud_model.tar.gz",
-    "keys"      : ['TransactionAmt','card6_freq_enc','card3','C12'],
-    "inputs"    : [{"name": k, "type": "number", "min": -1.0, "max": 1.0, "default": 0.0, "step": 0.01} for k in ['TransactionAmt','card6_freq_enc','card3','C12']]
+    "explainer" : "explainer_lending.shap",
+    "pipeline"  : "finalized_loan_model.tar.gz",
+    "keys"      : ['loan_amnt','int_rate','installment','annual_inc','dti','revol_util'],
+    "inputs"    : [{"name": k, "type": "number", "min": 0.0, "max": 1000000.0, "default": 0.0, "step": 1.0} 
+                   for k in ['loan_amnt','int_rate','installment','annual_inc','dti','revol_util']]
 }
 
 
@@ -113,14 +114,14 @@ def call_model_api(input_df):
         endpoint_name=MODEL_INFO["endpoint"],
         sagemaker_session=sm_session,
         serializer=JSONSerializer(),
-        deserializer=NumpyDeserializer()
+        deserializer=JSONDeserializer()
     )
 
     try:
         raw_pred = predictor.predict(input_df)
         pred_val = pd.DataFrame(raw_pred).values[-1][0]
         #mapping = {0: "SELL", 1: "HOLD", 2: "BUY"}
-        mapping = {0: "Legitimate", 1: "Fraud"}
+        mapping = {0: "No Default", 1: "Default"}
         return mapping.get(pred_val), 200
     except Exception as e:
         return f"Error: {str(e)}", 500
