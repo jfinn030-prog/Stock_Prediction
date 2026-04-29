@@ -170,8 +170,12 @@ with st.form("pred_form"):
    
     submitted = st.form_submit_button("Run Prediction")
 
-original = dataset.iloc[0:1].to_dict()
-original.update(user_inputs)
+original = dataset.iloc[0:1].copy()
+
+for key, value in user_inputs.items():
+    original[key] = value
+
+original = original.to_dict(orient="records")
 if submitted:
 
     res, status = call_model_api(original)
